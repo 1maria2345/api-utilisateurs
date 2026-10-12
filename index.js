@@ -17,6 +17,11 @@ app.get('/', (req, res) => {
   res.json({ message: 'Serveur lancé avec succès 🚀' });
 });
 
+// Route GET /users : renvoie la liste de tous les utilisateurs
+app.get('/users', (req, res) => {
+  res.status(200).json(users);
+});
+
 // 5. On démarre le serveur
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
