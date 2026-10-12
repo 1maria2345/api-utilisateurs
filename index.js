@@ -1,6 +1,9 @@
 // 1. On importe Express (la bibliothèque installée avec npm install express)
 const express = require('express');
 
+// On importe notre "base de données" temporaire (le tableau d'utilisateurs)
+const users = require('./data/users');
+
 // 2. On crée notre application (notre serveur)
 const app = express();
 
