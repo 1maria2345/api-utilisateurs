@@ -17,9 +17,26 @@ app.get('/', (req, res) => {
   res.json({ message: 'Serveur lancé avec succès 🚀' });
 });
 
-// Route GET /users : renvoie la liste de tous les utilisateurs
+// Route GET /users : renvoie tous les utilisateurs,
+// ou seulement ceux de certaines villes si on ajoute ?ville=... dans l'URL
 app.get('/users', (req, res) => {
-  res.status(200).json(users);
+  const { ville } = req.query;
+
+  // Pas de filtre demandé : on renvoie tout le monde
+  if (!ville) {
+    return res.status(200).json(users);
+  }
+
+  // On transforme le filtre en liste de villes en minuscules
+  // "Paris,Lyon" -> ["paris", "lyon"]
+  const villes = String(ville)
+    .split(',')
+    .map((v) => v.trim().toLowerCase());
+
+  // On garde seulement les utilisateurs dont la ville est dans la liste
+  const resultat = users.filter((u) => villes.includes(u.ville.toLowerCase()));
+
+  res.status(200).json(resultat);
 });
 
 // Route GET /users/:id : renvoie un seul utilisateur selon son id
