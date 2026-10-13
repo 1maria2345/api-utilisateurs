@@ -3,6 +3,8 @@ process.loadEnvFile();
 
 const express = require('express');
 const usersRoutes = require('./routes/users.routes');
+const authRoutes = require('./routes/auth.routes');
+const requireAuth = require('./middlewares/requireAuth');
 
 const app = express();
 const PORT = 3000;
@@ -15,8 +17,12 @@ app.get('/', (req, res) => {
 // Middleware : permet à Express de lire le JSON envoyé dans le corps des requêtes
 app.use(express.json());
 
-// Toutes les routes qui commencent par /users sont gérées par usersRoutes
-app.use('/users', usersRoutes);
+// Routes d'authentification (publiques) : /auth/signup et /auth/signin
+app.use('/auth', authRoutes);
+
+// Toutes les routes qui commencent par /users sont gérées par usersRoutes,
+// mais seulement après vérification du jeton par requireAuth
+app.use('/users', requireAuth, usersRoutes);
 
 app.listen(PORT, () => {
   console.log(`Serveur démarré sur http://localhost:${PORT}`);
