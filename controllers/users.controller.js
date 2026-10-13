@@ -53,4 +53,21 @@ const createUser = (req, res) => {
   res.status(201).json(newUser);
 };
 
-module.exports = { getAllUsers, getUserById, createUser };
+// DELETE /users/:id : supprime un utilisateur selon son id
+const deleteUser = (req, res) => {
+  const id = Number(req.params.id);
+
+  // On cherche la POSITION de l'utilisateur dans le tableau (-1 s'il n'existe pas)
+  const index = users.findIndex((u) => u.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ message: 'Utilisateur introuvable' });
+  }
+
+  // On retire 1 élément à cette position ; splice renvoie un tableau des éléments retirés
+  const [deletedUser] = users.splice(index, 1);
+
+  res.status(200).json({ message: 'Utilisateur supprimé', user: deletedUser });
+};
+
+module.exports = { getAllUsers, getUserById, createUser, deleteUser };
