@@ -1,3 +1,6 @@
+// Charge les variables du fichier .env dans process.env (fonction intégrée à Node.js)
+process.loadEnvFile();
+
 const express = require('express');
 const usersRoutes = require('./routes/users.routes');
 
