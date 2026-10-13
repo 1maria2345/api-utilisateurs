@@ -70,4 +70,29 @@ const deleteUser = (req, res) => {
   res.status(200).json({ message: 'Utilisateur supprimé', user: deletedUser });
 };
 
-module.exports = { getAllUsers, getUserById, createUser, deleteUser };
+// PUT /users/:id : remplace les informations d'un utilisateur existant
+const updateUser = (req, res) => {
+  const id = Number(req.params.id);
+  const user = users.find((u) => u.id === id);
+
+  // L'utilisateur doit exister
+  if (!user) {
+    return res.status(404).json({ message: 'Utilisateur introuvable' });
+  }
+
+  const { nom, age, ville } = req.body || {};
+
+  // Comme pour POST : les 3 champs sont obligatoires
+  if (!nom || age === undefined || !ville) {
+    return res.status(400).json({ message: 'nom, ville et age sont requis' });
+  }
+
+  // On modifie directement l'objet trouvé dans le tableau (l'id ne change pas)
+  user.nom = nom;
+  user.age = age;
+  user.ville = ville;
+
+  res.status(200).json(user);
+};
+
+module.exports = { getAllUsers, getUserById, createUser, updateUser, deleteUser };
