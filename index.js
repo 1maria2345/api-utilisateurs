@@ -9,6 +9,9 @@ app.get('/', (req, res) => {
   res.json({ message: 'Serveur lancé avec succès 🚀' });
 });
 
+// Middleware : permet à Express de lire le JSON envoyé dans le corps des requêtes
+app.use(express.json());
+
 // Toutes les routes qui commencent par /users sont gérées par usersRoutes
 app.use('/users', usersRoutes);
 

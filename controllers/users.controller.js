@@ -33,4 +33,24 @@ const getUserById = (req, res) => {
   res.status(200).json(user);
 };
 
-module.exports = { getAllUsers, getUserById };
+// POST /users : crée un nouvel utilisateur à partir du corps de la requête
+const createUser = (req, res) => {
+  // req.body vaut undefined si le client n'envoie pas de JSON : on prend alors un objet vide
+  const { nom, age, ville } = req.body || {};
+
+  // Vérification minimale : les 3 champs doivent être présents
+  if (!nom || age === undefined || !ville) {
+    return res.status(400).json({ message: 'nom, ville et age sont requis' });
+  }
+
+  // Nouvel id = plus grand id existant + 1 (ou 1 si la liste est vide)
+  const newId = users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1;
+
+  const newUser = { id: newId, nom, age, ville };
+  users.push(newUser);
+
+  // 201 = "Created" : la ressource a bien été créée
+  res.status(201).json(newUser);
+};
+
+module.exports = { getAllUsers, getUserById, createUser };
