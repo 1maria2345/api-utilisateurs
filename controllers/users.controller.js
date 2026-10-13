@@ -1,5 +1,5 @@
-// Import de la "base de données" temporaire
-const users = require('../data/users');
+// Connexion à la base de données Supabase (table "users")
+const supabase = require('../config/supabase');
 
 // Vérifie qu'un id reçu dans l'URL est un entier positif (1, 2, 42...)
 // ^[1-9]\d*$ : un chiffre de 1 à 9, suivi de n'importe quels chiffres, et rien d'autre
@@ -31,7 +31,16 @@ const validateUserData = ({ nom, age, ville }) => {
 
 // GET /users : renvoie tous les utilisateurs,
 // ou seulement ceux de certaines villes avec ?ville=Paris,Lyon
-const getAllUsers = (req, res) => {
+const getAllUsers = async (req, res) => {
+  // On attend (await) la réponse de Supabase : { data, error }
+  const { data: users, error } = await supabase.from('users').select('*').order('id');
+
+  // Problème côté base de données (table absente, Supabase injoignable...)
+  if (error) {
+    console.error('Erreur Supabase (getAllUsers) :', error.message);
+    return res.status(500).json({ message: 'Erreur lors de la récupération des utilisateurs' });
+  }
+
   const { ville } = req.query;
 
   // Pas de filtre demandé : on renvoie tout le monde
@@ -50,14 +59,21 @@ const getAllUsers = (req, res) => {
 };
 
 // GET /users/:id : renvoie un seul utilisateur selon son id
-const getUserById = (req, res) => {
+const getUserById = async (req, res) => {
   // L'id doit être un entier positif, sinon la requête est invalide
   if (!isValidId(req.params.id)) {
     return res.status(400).json({ message: "L'id doit être un entier positif" });
   }
 
   const id = Number(req.params.id);
-  const user = users.find((u) => u.id === id);
+
+  // maybeSingle() : renvoie l'utilisateur, ou null s'il n'existe pas
+  const { data: user, error } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
+
+  if (error) {
+    console.error('Erreur Supabase (getUserById) :', error.message);
+    return res.status(500).json({ message: "Erreur lors de la récupération de l'utilisateur" });
+  }
 
   if (!user) {
     return res.status(404).json({ message: 'Utilisateur introuvable' });
@@ -67,7 +83,7 @@ const getUserById = (req, res) => {
 };
 
 // POST /users : crée un nouvel utilisateur à partir du corps de la requête
-const createUser = (req, res) => {
+const createUser = async (req, res) => {
   // req.body vaut undefined si le client n'envoie pas de JSON : on prend alors un objet vide
   const data = req.body || {};
 
@@ -82,18 +98,25 @@ const createUser = (req, res) => {
   const ville = data.ville.trim();
   const { age } = data;
 
-  // Nouvel id = plus grand id existant + 1 (ou 1 si la liste est vide)
-  const newId = users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1;
+  // L'id est généré automatiquement par la base de données
+  // select().single() : renvoie l'utilisateur créé (avec son id)
+  const { data: newUser, error } = await supabase
+    .from('users')
+    .insert({ nom, age, ville })
+    .select()
+    .single();
 
-  const newUser = { id: newId, nom, age, ville };
-  users.push(newUser);
+  if (error) {
+    console.error('Erreur Supabase (createUser) :', error.message);
+    return res.status(500).json({ message: "Erreur lors de la création de l'utilisateur" });
+  }
 
   // 201 = "Created" : la ressource a bien été créée
   res.status(201).json(newUser);
 };
 
 // DELETE /users/:id : supprime un utilisateur selon son id
-const deleteUser = (req, res) => {
+const deleteUser = async (req, res) => {
   // L'id doit être un entier positif, sinon la requête est invalide
   if (!isValidId(req.params.id)) {
     return res.status(400).json({ message: "L'id doit être un entier positif" });
@@ -101,34 +124,34 @@ const deleteUser = (req, res) => {
 
   const id = Number(req.params.id);
 
-  // On cherche la POSITION de l'utilisateur dans le tableau (-1 s'il n'existe pas)
-  const index = users.findIndex((u) => u.id === id);
+  // select().maybeSingle() : renvoie l'utilisateur supprimé, ou null s'il n'existait pas
+  const { data: deletedUser, error } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', id)
+    .select()
+    .maybeSingle();
 
-  if (index === -1) {
-    return res.status(404).json({ message: 'Utilisateur introuvable' });
+  if (error) {
+    console.error('Erreur Supabase (deleteUser) :', error.message);
+    return res.status(500).json({ message: "Erreur lors de la suppression de l'utilisateur" });
   }
 
-  // On retire 1 élément à cette position ; splice renvoie un tableau des éléments retirés
-  const [deletedUser] = users.splice(index, 1);
+  if (!deletedUser) {
+    return res.status(404).json({ message: 'Utilisateur introuvable' });
+  }
 
   res.status(200).json({ message: 'Utilisateur supprimé', user: deletedUser });
 };
 
 // PUT /users/:id : remplace les informations d'un utilisateur existant
-const updateUser = (req, res) => {
+const updateUser = async (req, res) => {
   // L'id doit être un entier positif, sinon la requête est invalide
   if (!isValidId(req.params.id)) {
     return res.status(400).json({ message: "L'id doit être un entier positif" });
   }
 
   const id = Number(req.params.id);
-  const user = users.find((u) => u.id === id);
-
-  // L'utilisateur doit exister
-  if (!user) {
-    return res.status(404).json({ message: 'Utilisateur introuvable' });
-  }
-
   const data = req.body || {};
 
   // Comme pour POST : on vérifie les données
@@ -142,10 +165,22 @@ const updateUser = (req, res) => {
   const ville = data.ville.trim();
   const { age } = data;
 
-  // On modifie directement l'objet trouvé dans le tableau (l'id ne change pas)
-  user.nom = nom;
-  user.age = age;
-  user.ville = ville;
+  // select().maybeSingle() : renvoie l'utilisateur modifié, ou null s'il n'existe pas (l'id ne change pas)
+  const { data: user, error } = await supabase
+    .from('users')
+    .update({ nom, age, ville })
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('Erreur Supabase (updateUser) :', error.message);
+    return res.status(500).json({ message: "Erreur lors de la modification de l'utilisateur" });
+  }
+
+  if (!user) {
+    return res.status(404).json({ message: 'Utilisateur introuvable' });
+  }
 
   res.status(200).json(user);
 };
