@@ -1,5 +1,5 @@
-// Connexion à la base de données Supabase (table "users")
-const supabase = require('../config/supabase');
+// Accès aux données des utilisateurs (le controller ne parle jamais directement à Supabase)
+const userDb = require('../db/userDb');
 
 // Vérifie qu'un id reçu dans l'URL est un entier positif (1, 2, 42...)
 // ^[1-9]\d*$ : un chiffre de 1 à 9, suivi de n'importe quels chiffres, et rien d'autre
@@ -32,12 +32,12 @@ const validateUserData = ({ nom, age, ville }) => {
 // GET /users : renvoie tous les utilisateurs,
 // ou seulement ceux de certaines villes avec ?ville=Paris,Lyon
 const getAllUsers = async (req, res) => {
-  // On attend (await) la réponse de Supabase : { data, error }
-  const { data: users, error } = await supabase.from('users').select('*').order('id');
-
-  // Problème côté base de données (table absente, Supabase injoignable...)
-  if (error) {
-    console.error('Erreur Supabase (getAllUsers) :', error.message);
+  let users;
+  try {
+    users = await userDb.findAll();
+  } catch (error) {
+    // Problème côté base de données (table absente, Supabase injoignable...)
+    console.error('Erreur base de données (getAllUsers) :', error.message);
     return res.status(500).json({ message: 'Erreur lors de la récupération des utilisateurs' });
   }
 
@@ -65,13 +65,11 @@ const getUserById = async (req, res) => {
     return res.status(400).json({ message: "L'id doit être un entier positif" });
   }
 
-  const id = Number(req.params.id);
-
-  // maybeSingle() : renvoie l'utilisateur, ou null s'il n'existe pas
-  const { data: user, error } = await supabase.from('users').select('*').eq('id', id).maybeSingle();
-
-  if (error) {
-    console.error('Erreur Supabase (getUserById) :', error.message);
+  let user;
+  try {
+    user = await userDb.findById(Number(req.params.id));
+  } catch (error) {
+    console.error('Erreur base de données (getUserById) :', error.message);
     return res.status(500).json({ message: "Erreur lors de la récupération de l'utilisateur" });
   }
 
@@ -98,16 +96,11 @@ const createUser = async (req, res) => {
   const ville = data.ville.trim();
   const { age } = data;
 
-  // L'id est généré automatiquement par la base de données
-  // select().single() : renvoie l'utilisateur créé (avec son id)
-  const { data: newUser, error } = await supabase
-    .from('users')
-    .insert({ nom, age, ville })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Erreur Supabase (createUser) :', error.message);
+  let newUser;
+  try {
+    newUser = await userDb.create({ nom, age, ville });
+  } catch (error) {
+    console.error('Erreur base de données (createUser) :', error.message);
     return res.status(500).json({ message: "Erreur lors de la création de l'utilisateur" });
   }
 
@@ -122,18 +115,11 @@ const deleteUser = async (req, res) => {
     return res.status(400).json({ message: "L'id doit être un entier positif" });
   }
 
-  const id = Number(req.params.id);
-
-  // select().maybeSingle() : renvoie l'utilisateur supprimé, ou null s'il n'existait pas
-  const { data: deletedUser, error } = await supabase
-    .from('users')
-    .delete()
-    .eq('id', id)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Erreur Supabase (deleteUser) :', error.message);
+  let deletedUser;
+  try {
+    deletedUser = await userDb.remove(Number(req.params.id));
+  } catch (error) {
+    console.error('Erreur base de données (deleteUser) :', error.message);
     return res.status(500).json({ message: "Erreur lors de la suppression de l'utilisateur" });
   }
 
@@ -151,7 +137,6 @@ const updateUser = async (req, res) => {
     return res.status(400).json({ message: "L'id doit être un entier positif" });
   }
 
-  const id = Number(req.params.id);
   const data = req.body || {};
 
   // Comme pour POST : on vérifie les données
@@ -165,16 +150,11 @@ const updateUser = async (req, res) => {
   const ville = data.ville.trim();
   const { age } = data;
 
-  // select().maybeSingle() : renvoie l'utilisateur modifié, ou null s'il n'existe pas (l'id ne change pas)
-  const { data: user, error } = await supabase
-    .from('users')
-    .update({ nom, age, ville })
-    .eq('id', id)
-    .select()
-    .maybeSingle();
-
-  if (error) {
-    console.error('Erreur Supabase (updateUser) :', error.message);
+  let user;
+  try {
+    user = await userDb.update(Number(req.params.id), { nom, age, ville });
+  } catch (error) {
+    console.error('Erreur base de données (updateUser) :', error.message);
     return res.status(500).json({ message: "Erreur lors de la modification de l'utilisateur" });
   }
 
