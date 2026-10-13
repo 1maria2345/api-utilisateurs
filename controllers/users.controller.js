@@ -1,6 +1,10 @@
 // Import de la "base de données" temporaire
 const users = require('../data/users');
 
+// Vérifie qu'un id reçu dans l'URL est un entier positif (1, 2, 42...)
+// ^[1-9]\d*$ : un chiffre de 1 à 9, suivi de n'importe quels chiffres, et rien d'autre
+const isValidId = (id) => /^[1-9]\d*$/.test(id);
+
 // GET /users : renvoie tous les utilisateurs,
 // ou seulement ceux de certaines villes avec ?ville=Paris,Lyon
 const getAllUsers = (req, res) => {
@@ -23,6 +27,11 @@ const getAllUsers = (req, res) => {
 
 // GET /users/:id : renvoie un seul utilisateur selon son id
 const getUserById = (req, res) => {
+  // L'id doit être un entier positif, sinon la requête est invalide
+  if (!isValidId(req.params.id)) {
+    return res.status(400).json({ message: "L'id doit être un entier positif" });
+  }
+
   const id = Number(req.params.id);
   const user = users.find((u) => u.id === id);
 
@@ -55,6 +64,11 @@ const createUser = (req, res) => {
 
 // DELETE /users/:id : supprime un utilisateur selon son id
 const deleteUser = (req, res) => {
+  // L'id doit être un entier positif, sinon la requête est invalide
+  if (!isValidId(req.params.id)) {
+    return res.status(400).json({ message: "L'id doit être un entier positif" });
+  }
+
   const id = Number(req.params.id);
 
   // On cherche la POSITION de l'utilisateur dans le tableau (-1 s'il n'existe pas)
@@ -72,6 +86,11 @@ const deleteUser = (req, res) => {
 
 // PUT /users/:id : remplace les informations d'un utilisateur existant
 const updateUser = (req, res) => {
+  // L'id doit être un entier positif, sinon la requête est invalide
+  if (!isValidId(req.params.id)) {
+    return res.status(400).json({ message: "L'id doit être un entier positif" });
+  }
+
   const id = Number(req.params.id);
   const user = users.find((u) => u.id === id);
 
