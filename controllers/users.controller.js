@@ -5,6 +5,30 @@ const users = require('../data/users');
 // ^[1-9]\d*$ : un chiffre de 1 à 9, suivi de n'importe quels chiffres, et rien d'autre
 const isValidId = (id) => /^[1-9]\d*$/.test(id);
 
+// Vérifie les données d'un utilisateur envoyées dans le corps (POST et PUT)
+// Renvoie un message d'erreur si quelque chose ne va pas, ou null si tout est valide
+const validateUserData = ({ nom, age, ville }) => {
+  // Champs manquants
+  if (nom === undefined || age === undefined || age === null || ville === undefined) {
+    return 'nom, ville et age sont requis';
+  }
+
+  // nom et ville : du texte, pas vide (les espaces seuls ne comptent pas)
+  if (typeof nom !== 'string' || nom.trim() === '') {
+    return 'nom doit être un texte non vide';
+  }
+  if (typeof ville !== 'string' || ville.trim() === '') {
+    return 'ville doit être un texte non vide';
+  }
+
+  // age : un nombre entier, positif ou nul
+  if (!Number.isInteger(age) || age < 0) {
+    return 'age doit être un entier positif ou nul';
+  }
+
+  return null;
+};
+
 // GET /users : renvoie tous les utilisateurs,
 // ou seulement ceux de certaines villes avec ?ville=Paris,Lyon
 const getAllUsers = (req, res) => {
@@ -45,12 +69,18 @@ const getUserById = (req, res) => {
 // POST /users : crée un nouvel utilisateur à partir du corps de la requête
 const createUser = (req, res) => {
   // req.body vaut undefined si le client n'envoie pas de JSON : on prend alors un objet vide
-  const { nom, age, ville } = req.body || {};
+  const data = req.body || {};
 
-  // Vérification minimale : les 3 champs doivent être présents
-  if (!nom || age === undefined || !ville) {
-    return res.status(400).json({ message: 'nom, ville et age sont requis' });
+  // On vérifie les données ; s'il y a une erreur, on répond 400 avec le message
+  const erreur = validateUserData(data);
+  if (erreur) {
+    return res.status(400).json({ message: erreur });
   }
+
+  // On enlève les espaces autour du nom et de la ville avant d'enregistrer
+  const nom = data.nom.trim();
+  const ville = data.ville.trim();
+  const { age } = data;
 
   // Nouvel id = plus grand id existant + 1 (ou 1 si la liste est vide)
   const newId = users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1;
@@ -99,12 +129,18 @@ const updateUser = (req, res) => {
     return res.status(404).json({ message: 'Utilisateur introuvable' });
   }
 
-  const { nom, age, ville } = req.body || {};
+  const data = req.body || {};
 
-  // Comme pour POST : les 3 champs sont obligatoires
-  if (!nom || age === undefined || !ville) {
-    return res.status(400).json({ message: 'nom, ville et age sont requis' });
+  // Comme pour POST : on vérifie les données
+  const erreur = validateUserData(data);
+  if (erreur) {
+    return res.status(400).json({ message: erreur });
   }
+
+  // On enlève les espaces autour du nom et de la ville avant d'enregistrer
+  const nom = data.nom.trim();
+  const ville = data.ville.trim();
+  const { age } = data;
 
   // On modifie directement l'objet trouvé dans le tableau (l'id ne change pas)
   user.nom = nom;
